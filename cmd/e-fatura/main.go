@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/marcotuna/e-fatura-exporter/service"
 )
 
 const (
-	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36"
+	userAgent  = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36"
+	authURL    = "https://www.acesso.gov.pt"
+	serviceURL = "https://faturas.portaldasfinancas.gov.pt"
 )
 
 func main() {
@@ -22,7 +25,7 @@ func main() {
 	fmt.Println("Retriving CSRF Token")
 
 	httpClientGetCSRFToken, err := service.HTTPClientReq(
-		"https://www.acesso.gov.pt/jsp/loginRedirectForm.jsp?path=painelAdquirente.action&partID=EFPF",
+		fmt.Sprintf("%s/jsp/loginRedirectForm.jsp?path=painelAdquirente.action&partID=EFPF", authURL),
 		url.Values{},
 		[]*service.HTTPClientHeader{
 			&service.HTTPClientHeader{
@@ -51,11 +54,10 @@ func main() {
 	}
 
 	// Authenticate
-
 	fmt.Println("Perform Authentication")
 
 	httpClientAuth, err := service.HTTPClientReq(
-		"https://www.acesso.gov.pt/jsp/submissaoFormularioLogin",
+		fmt.Sprintf("%s/jsp/submissaoFormularioLogin", authURL),
 		url.Values{
 			"path":               []string{"painelAdquirente.action"},
 			"partID":             []string{"EFPF"},
@@ -118,13 +120,11 @@ func main() {
 	authUserName, _ := authDocument.Find(`input[name="userName"]`).First().Attr("value")
 	authPartID, _ := authDocument.Find(`input[name="partID"]`).First().Attr("value")
 
-	//fmt.Printf("Authentication Details: %v, %v, %v, %v, %v, %v, %v, %v", authSign, authUserID, authSessionID, authNif, authTc, authTv, authUserName, authPartID)
-
 	// Get with Cookie
 	fmt.Println("Retrive Invoices")
 
 	httpClient, err := service.HTTPClientReq(
-		"https://faturas.portaldasfinancas.gov.pt/consultarDocumentosAdquirente.action",
+		fmt.Sprintf("%s/consultarDocumentosAdquirente.action", serviceURL),
 		url.Values{
 			"sign":      []string{authSign},
 			"userID":    []string{authUserID},
@@ -161,5 +161,24 @@ func main() {
 		return
 	}
 
-	fmt.Printf("%+v", string(httpClient.Body))
+	httpClientGetDocs, err := service.HTTPClientReq(
+		fmt.Sprintf(
+			"%s/json/obterDocumentosAdquirente.action?dataInicioFilter=%s&dataFimFilter=%s&ambitoAquisicaoFilter=%s&_=%s",
+			serviceURL,
+			"2019-06-01",
+			"2019-08-17",
+			"TODOS",
+			time.Now(),
+		),
+		url.Values{},
+		httpClient.Header,
+		httpClient.Cookie,
+	)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(string(httpClientGetDocs.Body))
 }
