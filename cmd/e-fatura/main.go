@@ -80,10 +80,6 @@ func main() {
 				Key:   "User-Agent",
 				Value: []string{userAgent},
 			},
-			&service.HTTPClientHeader{
-				Key:   "Upgrade-Insecure-Requests",
-				Value: []string{"1"},
-			},
 		},
 		httpClientGetCSRFToken.Cookie,
 	)
@@ -147,10 +143,6 @@ func main() {
 			&service.HTTPClientHeader{
 				Key:   "User-Agent",
 				Value: []string{userAgent},
-			},
-			&service.HTTPClientHeader{
-				Key:   "Upgrade-Insecure-Requests",
-				Value: []string{"1"},
 			},
 		},
 		httpClientAuth.Cookie,
